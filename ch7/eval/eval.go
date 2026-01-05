@@ -55,6 +55,17 @@ func (b binary) Eval(env Env) float64 {
 	panic(fmt.Sprintf("unsupported binary operator: %q", b.op))
 }
 
+func (m minExp) Eval(env Env) float64 {
+	cur := m.args[0].Eval(env)
+	for i := 1; i < len(m.args); i++ {
+		num := m.args[i].Eval(env)
+		if num < cur {
+			cur = num
+		}
+	}
+	return cur
+}
+
 func (c call) Eval(env Env) float64 {
 	switch c.fn {
 	case "pow":

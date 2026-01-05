@@ -1,0 +1,7 @@
+apple 
+app
+app
+dup
+dup
+lo
+dup

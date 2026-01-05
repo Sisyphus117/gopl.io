@@ -34,6 +34,16 @@ func (s *IntSet) Add(x int) {
 	s.words[word] |= 1 << bit
 }
 
+func (s *IntSet) AddAll(nums ...int) {
+	for _, x := range nums {
+		word, bit := x/64, uint(x%64)
+		for word >= len(s.words) {
+			s.words = append(s.words, 0)
+		}
+		s.words[word] |= 1 << bit
+	}
+}
+
 // UnionWith sets s to the union of s and t.
 func (s *IntSet) UnionWith(t *IntSet) {
 	for i, tword := range t.words {
@@ -43,6 +53,39 @@ func (s *IntSet) UnionWith(t *IntSet) {
 			s.words = append(s.words, tword)
 		}
 	}
+}
+
+func (s *IntSet) IntersectWith(t *IntSet) {
+	if len(t.words) < len(s.words) {
+		s.words = s.words[:len(t.words)]
+	}
+	for i, tword := range t.words {
+		if i < len(s.words) {
+			s.words[i] &= tword
+		}
+	}
+}
+
+func (s *IntSet) DifferenceWith(t *IntSet) {
+	for i, tword := range t.words {
+		if i < len(s.words) {
+			s.words[i] &^= tword
+		}
+	}
+}
+
+func (s *IntSet) SymmetricDifference(t *IntSet) {
+	for i, tword := range t.words {
+		if i < len(s.words) {
+			s.words[i] ^= tword
+		} else {
+			s.words = append(s.words, tword)
+		}
+	}
+}
+
+func (s *IntSet) Elems() []uint64 {
+	return s.words
 }
 
 //!-intset
@@ -68,6 +111,39 @@ func (s *IntSet) String() string {
 	}
 	buf.WriteByte('}')
 	return buf.String()
+}
+
+func (s *IntSet) Len() int {
+	count := 0
+	for _, word := range s.words {
+		if word == 0 {
+			continue
+		}
+		for j := 0; j < 64; j++ {
+			if word&(1<<uint(j)) != 0 {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+func (s *IntSet) Remove(x int) {
+	word, bit := x/64, uint(x%64)
+	if word >= len(s.words) {
+		return
+	}
+	s.words[word] &= ^(1 << bit)
+}
+
+func (s *IntSet) Clear() {
+	s.words = []uint64{}
+}
+
+func (s *IntSet) Copy() *IntSet {
+	temp := &IntSet{make([]uint64, len(s.words))}
+	copy(temp.words, s.words)
+	return temp
 }
 
 //!-string

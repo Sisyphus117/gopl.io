@@ -33,20 +33,23 @@ func outline(url string) error {
 	}
 
 	//!+call
+	startElement, endElement := getStartAndEnd()
 	forEachNode(doc, startElement, endElement)
 	//!-call
 
 	return nil
 }
 
-//!+forEachNode
+// !+forEachNode
 // forEachNode calls the functions pre(x) and post(x) for each node
 // x in the tree rooted at n. Both functions are optional.
 // pre is called before the children are visited (preorder) and
 // post is called after (postorder).
-func forEachNode(n *html.Node, pre, post func(n *html.Node)) {
+func forEachNode(n *html.Node, pre, post func(n *html.Node) bool) {
 	if pre != nil {
-		pre(n)
+		if !pre(n) {
+			return
+		}
 	}
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
@@ -54,27 +57,59 @@ func forEachNode(n *html.Node, pre, post func(n *html.Node)) {
 	}
 
 	if post != nil {
-		post(n)
+		if !post(n) {
+			return
+		}
 	}
+}
+
+func ElementByID(id string, n *html.Node, pre, post func(n *html.Node) bool) (node *html.Node) {
+
+	if pre != nil {
+		if !pre(n) {
+			return
+		}
+	}
+
+	for _, attr := range n.Attr {
+		if attr.Key == "id" && attr.Val == id {
+			node = n
+			return
+		}
+	}
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		ElementByID(id, c, pre, post)
+	}
+
+	if post != nil {
+		if !post(n) {
+			return
+		}
+	}
+	return
 }
 
 //!-forEachNode
 
-//!+startend
-var depth int
+// !+startend
 
-func startElement(n *html.Node) {
-	if n.Type == html.ElementNode {
-		fmt.Printf("%*s<%s>\n", depth*2, "", n.Data)
-		depth++
-	}
-}
-
-func endElement(n *html.Node) {
-	if n.Type == html.ElementNode {
-		depth--
-		fmt.Printf("%*s</%s>\n", depth*2, "", n.Data)
-	}
+func getStartAndEnd() (func(*html.Node) bool, func(*html.Node) bool) {
+	var depth int
+	return func(n *html.Node) bool {
+			if n.Type == html.ElementNode {
+				fmt.Printf("%*s<%s>\n", depth*2, "", n.Data)
+				depth++
+				return true
+			}
+			return false
+		}, func(n *html.Node) bool {
+			if n.Type == html.ElementNode {
+				depth--
+				fmt.Printf("%*s</%s>\n", depth*2, "", n.Data)
+				return true
+			}
+			return false
+		}
 }
 
 //!-startend

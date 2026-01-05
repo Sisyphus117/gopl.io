@@ -27,9 +27,12 @@ func main() {
 
 //!-main
 
-//!+visit
+// !+visit
 // visit appends to links each link found in n and returns the result.
 func visit(links []string, n *html.Node) []string {
+	if n == nil {
+		return links
+	}
 	if n.Type == html.ElementNode && n.Data == "a" {
 		for _, a := range n.Attr {
 			if a.Key == "href" {
@@ -37,10 +40,11 @@ func visit(links []string, n *html.Node) []string {
 			}
 		}
 	}
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		links = visit(links, c)
-	}
-	return links
+	//for c := n.FirstChild; c != nil; c = c.NextSibling {
+	//links = visit(links, c)
+	//}
+	links = visit(links, n.FirstChild)
+	return visit(links, n.NextSibling)
 }
 
 //!-visit

@@ -53,6 +53,15 @@ func (c call) Check(vars map[Var]bool) error {
 	return nil
 }
 
+func (m minExp) Check(vars map[Var]bool) error {
+	for _, arg := range m.args {
+		if err := arg.Check(vars); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 var numParams = map[string]int{"pow": 2, "sin": 1, "sqrt": 1}
 
 //!-Check

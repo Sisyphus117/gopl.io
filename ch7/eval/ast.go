@@ -9,6 +9,7 @@ type Expr interface {
 	Eval(env Env) float64
 	// Check reports errors in this Expr and adds its Vars to the set.
 	Check(vars map[Var]bool) error
+	String() string
 }
 
 //!+ast
@@ -23,6 +24,10 @@ type literal float64
 type unary struct {
 	op rune // one of '+', '-'
 	x  Expr
+}
+
+type minExp struct {
+	args []Expr
 }
 
 // A binary represents a binary operator expression, e.g., x+y.

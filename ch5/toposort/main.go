@@ -8,62 +8,86 @@ package main
 
 import (
 	"fmt"
-	"sort"
 )
 
-//!+table
+// !+table
 // prereqs maps computer science courses to their prerequisites.
 var prereqs = map[string][]string{
-	"algorithms": {"data structures"},
-	"calculus":   {"linear algebra"},
+	// "algorithms":     {"data structures"},
+	// "calculus":       {"linear algebra"},
+	// "linear algebra": {"calculus"},
 
-	"compilers": {
-		"data structures",
-		"formal languages",
-		"computer organization",
-	},
+	// "compilers": {
+	// 	"data structures",
+	// 	"formal languages",
+	// 	"computer organization",
+	// },
 
-	"data structures":       {"discrete math"},
-	"databases":             {"data structures"},
-	"discrete math":         {"intro to programming"},
-	"formal languages":      {"discrete math"},
-	"networks":              {"operating systems"},
-	"operating systems":     {"data structures", "computer organization"},
-	"programming languages": {"data structures", "computer organization"},
+	// "data structures":       {"discrete math"},
+	// "databases":             {"data structures"},
+	// "discrete math":         {"intro to programming"},
+	// "formal languages":      {"discrete math"},
+	// "networks":              {"operating systems"},
+	// "operating systems":     {"data structures", "computer organization"},
+	// "programming languages": {"data structures", "computer organization"},
+	"b": {"a"},
+	"c": {"a", "b"},
+	"d": {"b"},
+	"e": {"a", "d"},
+	"f": {"g"},
 }
 
 //!-table
 
-//!+main
+// !+main
 func main() {
-	for i, course := range topoSort(prereqs) {
+	res, err := topoSort(prereqs)
+	if err != nil {
+		fmt.Printf("%v", err)
+		return
+	}
+	for i, course := range res {
 		fmt.Printf("%d:\t%s\n", i+1, course)
 	}
 }
 
-func topoSort(m map[string][]string) []string {
+func topoSort(m map[string][]string) ([]string, error) {
 	var order []string
-	seen := make(map[string]bool)
-	var visitAll func(items []string)
+	seen := make(map[string]string)
+	var visitAll func(items map[string]struct{}) error
 
-	visitAll = func(items []string) {
-		for _, item := range items {
-			if !seen[item] {
-				seen[item] = true
-				visitAll(m[item])
+	visitAll = func(items map[string]struct{}) error {
+		for item := range items {
+			if _, has := seen[item]; !has {
+				seen[item] = "visiting"
+				next := map[string]struct{}{}
+				for _, dep := range m[item] {
+					next[dep] = struct{}{}
+				}
+				err := visitAll(next)
+				if err != nil {
+					return err
+				}
+
+				seen[item] = "done"
 				order = append(order, item)
+			} else if seen[item] == "visiting" {
+				return fmt.Errorf("has circle in dependencies\n")
 			}
 		}
+		return nil
 	}
-
-	var keys []string
+	keys := map[string]struct{}{}
 	for key := range m {
-		keys = append(keys, key)
+		keys[key] = struct{}{}
 	}
 
-	sort.Strings(keys)
-	visitAll(keys)
-	return order
+	err := visitAll(keys)
+	if err != nil {
+		return nil, err
+	}
+
+	return order, nil
 }
 
 //!-main

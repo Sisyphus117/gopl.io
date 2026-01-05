@@ -13,22 +13,21 @@ import (
 	"image/color"
 	"image/gif"
 	"io"
+	"log"
 	"math"
 	"math/rand"
+	"net/http"
 	"os"
+	"time"
 )
 
 //!-main
 // Packages not needed by version in book.
-import (
-	"log"
-	"net/http"
-	"time"
-)
 
 //!+main
 
-var palette = []color.Color{color.White, color.Black}
+// var palette = []color.Color{color.White, color.Black}
+var palette = []color.Color{color.RGBA{0x0, 82, 0x0, 0xff}, color.RGBA{240, 0x0, 0x0, 0xff}}
 
 const (
 	whiteIndex = 0 // first color in palette
@@ -74,7 +73,7 @@ func lissajous(out io.Writer) {
 			x := math.Sin(t)
 			y := math.Sin(t*freq + phase)
 			img.SetColorIndex(size+int(x*size+0.5), size+int(y*size+0.5),
-				blackIndex)
+				1)
 		}
 		phase += 0.1
 		anim.Delay = append(anim.Delay, delay)

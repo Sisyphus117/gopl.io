@@ -30,9 +30,10 @@ func main() {
 			f.Close()
 		}
 	}
-	for line, n := range counts {
+	for _, n := range counts {
 		if n > 1 {
-			fmt.Printf("%d\t%s\n", n, line)
+			//fmt.Printf("%d\t%s\n", n, line)
+			fmt.Printf("%s\n", os.Args[1])
 		}
 	}
 }
