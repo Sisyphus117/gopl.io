@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -23,14 +25,50 @@ func echo(c net.Conn, shout string, delay time.Duration) {
 	fmt.Fprintln(c, "\t", strings.ToLower(shout))
 }
 
-//!+
+// !+
 func handleConn(c net.Conn) {
+	var wg sync.WaitGroup
 	input := bufio.NewScanner(c)
-	for input.Scan() {
-		go echo(c, input.Text(), 1*time.Second)
+	ticker := time.NewTicker(time.Second)
+	count := 0
+	text := make(chan string)
+	done := make(chan struct{})
+	go func() {
+		defer close(text)
+		for {
+			select {
+			case <-done:
+				return
+			default:
+				if input.Scan() {
+					text <- input.Text()
+				}
+			}
+		}
+	}()
+selectLoop:
+	for {
+		select {
+		case cur := <-text:
+			wg.Add(1)
+			count = 0
+			go func(shout string) {
+				defer wg.Done()
+				echo(c, shout, time.Second)
+			}(cur)
+		case <-ticker.C:
+			if count >= 10 {
+				done <- struct{}{}
+				break selectLoop
+			}
+			count++
+		}
 	}
+
 	// NOTE: ignoring potential errors from input.Err()
-	c.Close()
+	wg.Wait()
+	fmt.Fprintf(os.Stdout, "connection closed\n")
+	c.(*net.TCPConn).CloseWrite()
 }
 
 //!-

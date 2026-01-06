@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
 	"time"
 )
 
@@ -25,18 +26,27 @@ func handleConn(c net.Conn) {
 }
 
 func main() {
-	listener, err := net.Listen("tcp", "localhost:8000")
-	if err != nil {
-		log.Fatal(err)
+	url := "localhost:"
+	for i := 1; i < len(os.Args); i++ {
+		port := url + os.Args[i]
+		go func() {
+			listener, err := net.Listen("tcp", port)
+			if err != nil {
+				log.Fatal(err)
+			}
+			//!+
+			for {
+				conn, err := listener.Accept()
+				if err != nil {
+					log.Print(err) // e.g., connection aborted
+					continue
+				}
+				go handleConn(conn) // handle connections concurrently
+			}
+			//!-
+		}()
 	}
-	//!+
 	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Print(err) // e.g., connection aborted
-			continue
-		}
-		go handleConn(conn) // handle connections concurrently
 	}
-	//!-
+
 }
