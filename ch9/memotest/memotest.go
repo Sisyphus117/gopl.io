@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-//!+httpRequestBody
+// !+httpRequestBody
 func httpGetBody(url string) (interface{}, error) {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -35,13 +35,11 @@ func incomingURLs() <-chan string {
 	ch := make(chan string)
 	go func() {
 		for _, url := range []string{
-			"https://golang.org",
+			"https://baidu.com",
 			"https://godoc.org",
-			"https://play.golang.org",
 			"http://gopl.io",
-			"https://golang.org",
 			"https://godoc.org",
-			"https://play.golang.org",
+			"https://baidu.com",
 			"http://gopl.io",
 		} {
 			ch <- url
