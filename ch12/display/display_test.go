@@ -90,6 +90,36 @@ func Example_array() {
 	// x[0].value = 3
 }
 
+func Example_structKey_map() {
+	type example struct {
+		id   int
+		name string
+	}
+	Display("x", map[example]int{{12, "Alice"}: 33})
+	// Output:
+	//Display x (map[display.example]int):
+	//x[{id:12,name:Alice}] = 33
+}
+
+func Example_arrayKey_map() {
+	Display("x", map[[2]int]int{{2, 3}: 2})
+	//Output:
+	//Display x (map[[2]int]int):
+	//x[[2,3]] = 2
+}
+
+func Example_circle_dependency() {
+	type circle struct {
+		next *circle
+	}
+	c := &circle{nil}
+	c.next = c
+	Display("x", c)
+	// Output:
+	//Display x (*display.circle):
+	//Error:too deep, check if there is a circle
+}
+
 func Example_movie() {
 	//!+movie
 	type Movie struct {

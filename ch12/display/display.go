@@ -16,7 +16,7 @@ import (
 
 func Display(name string, x interface{}) {
 	fmt.Printf("Display %s (%T):\n", name, x)
-	display(name, reflect.ValueOf(x))
+	display(name, reflect.ValueOf(x), 0)
 }
 
 //!-Display
@@ -45,42 +45,70 @@ func formatAtom(v reflect.Value) string {
 		reflect.Slice, reflect.Map:
 		return v.Type().String() + " 0x" +
 			strconv.FormatUint(uint64(v.Pointer()), 16)
+	case reflect.Struct:
+		buf := "{"
+		for i := 0; i < v.NumField(); i++ {
+			field := v.Type().Field(i)
+			key := field.Name
+			val := v.Field(i)
+			buf += fmt.Sprintf("%s:%v,", key, val)
+		}
+		if v.NumField() > 0 {
+			buf = buf[:len(buf)-1]
+		}
+		buf += "}"
+		return buf
+	case reflect.Array:
+		buf := "["
+		for i := 0; i < v.Len(); i++ {
+			val := v.Index(i)
+			buf += fmt.Sprintf("%v,", val)
+		}
+		if v.Len() > 0 {
+			buf = buf[:len(buf)-1]
+		}
+		buf += "]"
+		return buf
 	default: // reflect.Array, reflect.Struct, reflect.Interface
 		return v.Type().String() + " value"
 	}
 }
 
-//!+display
-func display(path string, v reflect.Value) {
+// !+display
+func display(path string, v reflect.Value, depth int) {
+	if depth > 10 {
+		fmt.Println("Error:too deep, check if there is a circle")
+		return
+	}
 	switch v.Kind() {
 	case reflect.Invalid:
 		fmt.Printf("%s = invalid\n", path)
 	case reflect.Slice, reflect.Array:
 		for i := 0; i < v.Len(); i++ {
-			display(fmt.Sprintf("%s[%d]", path, i), v.Index(i))
+			display(fmt.Sprintf("%s[%d]", path, i), v.Index(i), depth+1)
 		}
 	case reflect.Struct:
 		for i := 0; i < v.NumField(); i++ {
 			fieldPath := fmt.Sprintf("%s.%s", path, v.Type().Field(i).Name)
-			display(fieldPath, v.Field(i))
+			display(fieldPath, v.Field(i), depth+1)
 		}
 	case reflect.Map:
 		for _, key := range v.MapKeys() {
-			display(fmt.Sprintf("%s[%s]", path,
-				formatAtom(key)), v.MapIndex(key))
+			display(fmt.Sprintf("%s[%s]",
+				path, formatAtom(key)), v.MapIndex(key), depth+1)
 		}
-	case reflect.Ptr:
+	case reflect.Pointer:
 		if v.IsNil() {
 			fmt.Printf("%s = nil\n", path)
 		} else {
-			display(fmt.Sprintf("(*%s)", path), v.Elem())
+			display(fmt.Sprintf("(*%s)", path), v.Elem(), depth+1)
 		}
 	case reflect.Interface:
 		if v.IsNil() {
 			fmt.Printf("%s = nil\n", path)
 		} else {
 			fmt.Printf("%s.type = %s\n", path, v.Elem().Type())
-			display(path+".value", v.Elem())
+			display(path+".value", v.Elem(), depth+1)
 		}
 	default: // basic types, channels, funcs
 		fmt.Printf("%s = %s\n", path, formatAtom(v))

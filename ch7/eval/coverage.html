@@ -1,0 +1,538 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>eval: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">gopl.io/ch7/eval/check.go (58.3%)</option>
+				
+				<option value="file1">gopl.io/ch7/eval/eval.go (43.5%)</option>
+				
+				<option value="file2">gopl.io/ch7/eval/parse.go (82.6%)</option>
+				
+				<option value="file3">gopl.io/ch7/eval/print.go (0.0%)</option>
+				
+				<option value="file4">gopl.io/ch7/eval/string.go (0.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">// Copyright © 2016 Alan A. A. Donovan &amp; Brian W. Kernighan.
+// License: https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+package eval
+
+import (
+        "fmt"
+        "strings"
+)
+
+//!+Check
+
+func (v Var) Check(vars map[Var]bool) error <span class="cov8" title="1">{
+        vars[v] = true
+        return nil
+}</span>
+
+func (literal) Check(vars map[Var]bool) error <span class="cov8" title="1">{
+        return nil
+}</span>
+
+func (u unary) Check(vars map[Var]bool) error <span class="cov0" title="0">{
+        if !strings.ContainsRune("+-", u.op) </span><span class="cov0" title="0">{
+                return fmt.Errorf("unexpected unary op %q", u.op)
+        }</span>
+        <span class="cov0" title="0">return u.x.Check(vars)</span>
+}
+
+func (b binary) Check(vars map[Var]bool) error <span class="cov8" title="1">{
+        if !strings.ContainsRune("+-*/", b.op) </span><span class="cov0" title="0">{
+                return fmt.Errorf("unexpected binary op %q", b.op)
+        }</span>
+        <span class="cov8" title="1">if err := b.x.Check(vars); err != nil </span><span class="cov0" title="0">{
+                return err
+        }</span>
+        <span class="cov8" title="1">return b.y.Check(vars)</span>
+}
+
+func (c call) Check(vars map[Var]bool) error <span class="cov8" title="1">{
+        arity, ok := numParams[c.fn]
+        if !ok </span><span class="cov8" title="1">{
+                return fmt.Errorf("unknown function %q", c.fn)
+        }</span>
+        <span class="cov8" title="1">if len(c.args) != arity </span><span class="cov8" title="1">{
+                return fmt.Errorf("call to %s has %d args, want %d",
+                        c.fn, len(c.args), arity)
+        }</span>
+        <span class="cov8" title="1">for _, arg := range c.args </span><span class="cov8" title="1">{
+                if err := arg.Check(vars); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        }
+        <span class="cov8" title="1">return nil</span>
+}
+
+func (m minExp) Check(vars map[Var]bool) error <span class="cov0" title="0">{
+        for _, arg := range m.args </span><span class="cov0" title="0">{
+                if err := arg.Check(vars); err != nil </span><span class="cov0" title="0">{
+                        return err
+                }</span>
+        }
+        <span class="cov0" title="0">return nil</span>
+}
+
+var numParams = map[string]int{"pow": 2, "sin": 1, "sqrt": 1}
+
+//!-Check
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">// Copyright © 2016 Alan A. A. Donovan &amp; Brian W. Kernighan.
+// License: https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+// See page 198.
+
+// Package eval provides an expression evaluator.
+package eval
+
+import (
+        "fmt"
+        "math"
+)
+
+//!+env
+
+type Env map[Var]float64
+
+//!-env
+
+//!+Eval1
+
+func (v Var) Eval(env Env) float64 <span class="cov8" title="1">{
+        return env[v]
+}</span>
+
+func (l literal) Eval(_ Env) float64 <span class="cov8" title="1">{
+        return float64(l)
+}</span>
+
+//!-Eval1
+
+//!+Eval2
+
+func (u unary) Eval(env Env) float64 <span class="cov0" title="0">{
+        switch u.op </span>{
+        case '+':<span class="cov0" title="0">
+                return +u.x.Eval(env)</span>
+        case '-':<span class="cov0" title="0">
+                return -u.x.Eval(env)</span>
+        }
+        <span class="cov0" title="0">panic(fmt.Sprintf("unsupported unary operator: %q", u.op))</span>
+}
+
+func (b binary) Eval(env Env) float64 <span class="cov8" title="1">{
+        switch b.op </span>{
+        case '+':<span class="cov8" title="1">
+                return b.x.Eval(env) + b.y.Eval(env)</span>
+        case '-':<span class="cov8" title="1">
+                return b.x.Eval(env) - b.y.Eval(env)</span>
+        case '*':<span class="cov8" title="1">
+                return b.x.Eval(env) * b.y.Eval(env)</span>
+        case '/':<span class="cov8" title="1">
+                return b.x.Eval(env) / b.y.Eval(env)</span>
+        }
+        <span class="cov0" title="0">panic(fmt.Sprintf("unsupported binary operator: %q", b.op))</span>
+}
+
+func (m minExp) Eval(env Env) float64 <span class="cov0" title="0">{
+        cur := m.args[0].Eval(env)
+        for i := 1; i &lt; len(m.args); i++ </span><span class="cov0" title="0">{
+                num := m.args[i].Eval(env)
+                if num &lt; cur </span><span class="cov0" title="0">{
+                        cur = num
+                }</span>
+        }
+        <span class="cov0" title="0">return cur</span>
+}
+
+func (c call) Eval(env Env) float64 <span class="cov8" title="1">{
+        switch c.fn </span>{
+        case "pow":<span class="cov8" title="1">
+                return math.Pow(c.args[0].Eval(env), c.args[1].Eval(env))</span>
+        case "sin":<span class="cov0" title="0">
+                return math.Sin(c.args[0].Eval(env))</span>
+        case "sqrt":<span class="cov8" title="1">
+                return math.Sqrt(c.args[0].Eval(env))</span>
+        }
+        <span class="cov0" title="0">panic(fmt.Sprintf("unsupported function call: %s", c.fn))</span>
+}
+
+//!-Eval2
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">// Copyright © 2016 Alan A. A. Donovan &amp; Brian W. Kernighan.
+// License: https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+package eval
+
+import (
+        "fmt"
+        "strconv"
+        "strings"
+        "text/scanner"
+)
+
+// ---- lexer ----
+
+// This lexer is similar to the one described in Chapter 13.
+type lexer struct {
+        scan  scanner.Scanner
+        token rune // current lookahead token
+}
+
+func (lex *lexer) next()        <span class="cov8" title="1">{ lex.token = lex.scan.Scan() }</span>
+func (lex *lexer) text() string <span class="cov8" title="1">{ return lex.scan.TokenText() }</span>
+
+type lexPanic string
+
+// describe returns a string describing the current token, for use in errors.
+func (lex *lexer) describe() string <span class="cov8" title="1">{
+        switch lex.token </span>{
+        case scanner.EOF:<span class="cov0" title="0">
+                return "end of file"</span>
+        case scanner.Ident:<span class="cov0" title="0">
+                return fmt.Sprintf("identifier %s", lex.text())</span>
+        case scanner.Int, scanner.Float:<span class="cov0" title="0">
+                return fmt.Sprintf("number %s", lex.text())</span>
+        }
+        <span class="cov8" title="1">return fmt.Sprintf("%q", rune(lex.token))</span> // any other rune
+}
+
+func precedence(op rune) int <span class="cov8" title="1">{
+        switch op </span>{
+        case '*', '/':<span class="cov8" title="1">
+                return 2</span>
+        case '+', '-':<span class="cov8" title="1">
+                return 1</span>
+        }
+        <span class="cov8" title="1">return 0</span>
+}
+
+// ---- parser ----
+
+// Parse parses the input string as an arithmetic expression.
+//
+//   expr = num                         a literal number, e.g., 3.14159
+//        | id                          a variable name, e.g., x
+//        | id '(' expr ',' ... ')'     a function call
+//        | '-' expr                    a unary operator (+-)
+//        | expr '+' expr               a binary operator (+-*/)
+//
+func Parse(input string) (_ Expr, err error) <span class="cov8" title="1">{
+        defer func() </span><span class="cov8" title="1">{
+                switch x := recover().(type) </span>{
+                case nil:<span class="cov8" title="1"></span>
+                        // no panic
+                case lexPanic:<span class="cov8" title="1">
+                        err = fmt.Errorf("%s", x)</span>
+                default:<span class="cov0" title="0">
+                        // unexpected panic: resume state of panic.
+                        panic(x)</span>
+                }
+        }()
+        <span class="cov8" title="1">lex := new(lexer)
+        lex.scan.Init(strings.NewReader(input))
+        lex.scan.Mode = scanner.ScanIdents | scanner.ScanInts | scanner.ScanFloats
+        lex.next() // initial lookahead
+        e := parseExpr(lex)
+        if lex.token != scanner.EOF </span><span class="cov8" title="1">{
+                return nil, fmt.Errorf("unexpected %s", lex.describe())
+        }</span>
+        <span class="cov8" title="1">return e, nil</span>
+}
+
+func parseExpr(lex *lexer) Expr <span class="cov8" title="1">{ return parseBinary(lex, 1) }</span>
+
+// binary = unary ('+' binary)*
+// parseBinary stops when it encounters an
+// operator of lower precedence than prec1.
+func parseBinary(lex *lexer, prec1 int) Expr <span class="cov8" title="1">{
+        lhs := parseUnary(lex)
+        for prec := precedence(lex.token); prec &gt;= prec1; prec-- </span><span class="cov8" title="1">{
+                for precedence(lex.token) == prec </span><span class="cov8" title="1">{
+                        op := lex.token
+                        lex.next() // consume operator
+                        rhs := parseBinary(lex, prec+1)
+                        lhs = binary{op, lhs, rhs}
+                }</span>
+        }
+        <span class="cov8" title="1">return lhs</span>
+}
+
+// unary = '+' expr | primary
+func parseUnary(lex *lexer) Expr <span class="cov8" title="1">{
+        if lex.token == '+' || lex.token == '-' </span><span class="cov0" title="0">{
+                op := lex.token
+                lex.next() // consume '+' or '-'
+                return unary{op, parseUnary(lex)}
+        }</span>
+        <span class="cov8" title="1">return parsePrimary(lex)</span>
+}
+
+// primary = id
+//         | id '(' expr ',' ... ',' expr ')'
+//         | num
+//         | '(' expr ')'
+func parsePrimary(lex *lexer) Expr <span class="cov8" title="1">{
+        switch lex.token </span>{
+        case scanner.Ident:<span class="cov8" title="1">
+                id := lex.text()
+                lex.next() // consume Ident
+                if lex.token != '(' </span><span class="cov8" title="1">{
+                        return Var(id)
+                }</span>
+                <span class="cov8" title="1">lex.next() // consume '('
+                var args []Expr
+                if lex.token != ')' </span><span class="cov8" title="1">{
+                        for </span><span class="cov8" title="1">{
+                                args = append(args, parseExpr(lex))
+                                if lex.token != ',' </span><span class="cov8" title="1">{
+                                        break</span>
+                                }
+                                <span class="cov8" title="1">lex.next()</span> // consume ','
+                        }
+                        <span class="cov8" title="1">if lex.token != ')' </span><span class="cov0" title="0">{
+                                msg := fmt.Sprintf("got %s, want ')'", lex.describe())
+                                panic(lexPanic(msg))</span>
+                        }
+                }
+                <span class="cov8" title="1">lex.next() // consume ')'
+                return call{id, args}</span>
+
+        case scanner.Int, scanner.Float:<span class="cov8" title="1">
+                f, err := strconv.ParseFloat(lex.text(), 64)
+                if err != nil </span><span class="cov0" title="0">{
+                        panic(lexPanic(err.Error()))</span>
+                }
+                <span class="cov8" title="1">lex.next() // consume number
+                return literal(f)</span>
+
+        case '(':<span class="cov8" title="1">
+                lex.next() // consume '('
+                e := parseExpr(lex)
+                if lex.token != ')' </span><span class="cov0" title="0">{
+                        msg := fmt.Sprintf("got %s, want ')'", lex.describe())
+                        panic(lexPanic(msg))</span>
+                }
+                <span class="cov8" title="1">lex.next() // consume ')'
+                return e</span>
+        }
+        <span class="cov8" title="1">msg := fmt.Sprintf("unexpected %s", lex.describe())
+        panic(lexPanic(msg))</span>
+}
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">// Copyright © 2016 Alan A. A. Donovan &amp; Brian W. Kernighan.
+// License: https://creativecommons.org/licenses/by-nc-sa/4.0/
+
+package eval
+
+import (
+        "bytes"
+        "fmt"
+)
+
+// Format formats an expression as a string.
+// It does not attempt to remove unnecessary parens.
+func Format(e Expr) string <span class="cov0" title="0">{
+        var buf bytes.Buffer
+        write(&amp;buf, e)
+        return buf.String()
+}</span>
+
+func write(buf *bytes.Buffer, e Expr) <span class="cov0" title="0">{
+        switch e := e.(type) </span>{
+        case literal:<span class="cov0" title="0">
+                fmt.Fprintf(buf, "%g", e)</span>
+
+        case Var:<span class="cov0" title="0">
+                fmt.Fprintf(buf, "%s", e)</span>
+
+        case unary:<span class="cov0" title="0">
+                fmt.Fprintf(buf, "(%c", e.op)
+                write(buf, e.x)
+                buf.WriteByte(')')</span>
+
+        case binary:<span class="cov0" title="0">
+                buf.WriteByte('(')
+                write(buf, e.x)
+                fmt.Fprintf(buf, " %c ", e.op)
+                write(buf, e.y)
+                buf.WriteByte(')')</span>
+
+        case call:<span class="cov0" title="0">
+                fmt.Fprintf(buf, "%s(", e.fn)
+                for i, arg := range e.args </span><span class="cov0" title="0">{
+                        if i &gt; 0 </span><span class="cov0" title="0">{
+                                buf.WriteString(", ")
+                        }</span>
+                        <span class="cov0" title="0">write(buf, arg)</span>
+                }
+                <span class="cov0" title="0">buf.WriteByte(')')</span>
+
+        case minExp:<span class="cov0" title="0">
+                fmt.Fprintf(buf, "MIN(")
+                for i, arg := range e.args </span><span class="cov0" title="0">{
+                        if i &gt; 0 </span><span class="cov0" title="0">{
+                                buf.WriteString(", ")
+                        }</span>
+                        <span class="cov0" title="0">write(buf, arg)</span>
+                }
+                <span class="cov0" title="0">buf.WriteByte(')')</span>
+        default:<span class="cov0" title="0">
+                panic(fmt.Sprintf("unknown Expr: %T", e))</span>
+        }
+}
+</pre>
+		
+		<pre class="file" id="file4" style="display: none">package eval
+
+import "strconv"
+
+func (v Var) String() string <span class="cov0" title="0">{
+        return string(v)
+}</span>
+
+func (l literal) String() string <span class="cov0" title="0">{
+        return strconv.FormatFloat(float64(l), 'g', -1, 64)
+}</span>
+
+func (u unary) String() string <span class="cov0" title="0">{
+        switch u.x.(type) </span>{
+        case Var, literal:<span class="cov0" title="0">
+                return string(u.op) + u.x.String()</span>
+        default:<span class="cov0" title="0">
+                return "(" + string(u.op) + u.x.String() + ")"</span>
+        }
+}
+
+func (b binary) String() string <span class="cov0" title="0">{
+        switch b.op </span>{
+        case '+', '-':<span class="cov0" title="0">
+                return "(" + b.x.String() + string(b.op) + b.y.String() + ")"</span>
+        default:<span class="cov0" title="0">
+                return b.x.String() + string(b.op) + b.y.String()</span>
+        }
+}
+
+func (c call) String() string <span class="cov0" title="0">{
+        if len(c.args) == 0 </span><span class="cov0" title="0">{
+                return c.fn + "()"
+        }</span>
+        <span class="cov0" title="0">str := c.fn + "("
+        for _, eval := range c.args </span><span class="cov0" title="0">{
+                str += eval.String() + ","
+        }</span>
+        <span class="cov0" title="0">str = str[:len(str)-1] + ")"
+        return str</span>
+}
+
+func (m minExp) String() string <span class="cov0" title="0">{
+        str := "MIN" + "("
+        for _, eval := range m.args </span><span class="cov0" title="0">{
+                str += eval.String() + ","
+        }</span>
+        <span class="cov0" title="0">str = str[:len(str)-1] + ")"
+        return str</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
