@@ -16,8 +16,7 @@ import (
 // nondeterministic.  The output of the t.Log statements can be
 // inspected by running the test with the -v flag:
 //
-// 	$ go test -v gopl.io/ch12/sexpr
-//
+//	$ go test -v gopl.io/ch12/sexpr
 func Test(t *testing.T) {
 	type Movie struct {
 		Title, Subtitle string
@@ -29,8 +28,9 @@ func Test(t *testing.T) {
 	strangelove := Movie{
 		Title:    "Dr. Strangelove",
 		Subtitle: "How I Learned to Stop Worrying and Love the Bomb",
-		Year:     1964,
+		Year:     0,
 		Actor: map[string]string{
+			"zero":                       "",
 			"Dr. Strangelove":            "Peter Sellers",
 			"Grp. Capt. Lionel Mandrake": "Peter Sellers",
 			"Pres. Merkin Muffley":       "Peter Sellers",
@@ -39,6 +39,7 @@ func Test(t *testing.T) {
 			`Maj. T.J. "King" Kong`:      "Slim Pickens",
 		},
 		Oscars: []string{
+			"",
 			"Best Actor (Nomin.)",
 			"Best Adapted Screenplay (Nomin.)",
 			"Best Director (Nomin.)",

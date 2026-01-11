@@ -39,6 +39,7 @@ import "C"
 
 import (
 	"io"
+	"sync"
 	"unsafe"
 )
 
@@ -46,6 +47,7 @@ type writer struct {
 	w      io.Writer // underlying output stream
 	stream *C.bz_stream
 	outbuf [64 * 1024]byte
+	mu     sync.Mutex
 }
 
 // NewWriter returns a writer for bzip2-compressed streams.
@@ -60,12 +62,15 @@ func NewWriter(out io.Writer) io.WriteCloser {
 
 //!-
 
-//!+write
+// !+write
 func (w *writer) Write(data []byte) (int, error) {
 	if w.stream == nil {
 		panic("closed")
 	}
 	var total int // uncompressed bytes written
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
 
 	for len(data) > 0 {
 		inlen, outlen := C.uint(len(data)), C.uint(cap(w.outbuf))
@@ -83,13 +88,16 @@ func (w *writer) Write(data []byte) (int, error) {
 
 //!-write
 
-//!+close
+// !+close
 // Close flushes the compressed data and closes the stream.
 // It does not close the underlying io.Writer.
 func (w *writer) Close() error {
 	if w.stream == nil {
 		panic("closed")
 	}
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
 	defer func() {
 		C.BZ2_bzCompressEnd(w.stream)
 		C.bz2free(w.stream)

@@ -9,13 +9,15 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
+	"strconv"
+	"strings"
 )
 
-//!+Marshal
+// !+Marshal
 // Marshal encodes a Go value in S-expression form.
 func Marshal(v interface{}) ([]byte, error) {
 	var buf bytes.Buffer
-	if err := encode(&buf, reflect.ValueOf(v)); err != nil {
+	if err := encode(&buf, reflect.ValueOf(v), 0); err != nil {
 		return nil, err
 	}
 	return buf.Bytes(), nil
@@ -24,8 +26,11 @@ func Marshal(v interface{}) ([]byte, error) {
 //!-Marshal
 
 // encode writes to buf an S-expression representation of v.
-//!+encode
-func encode(buf *bytes.Buffer, v reflect.Value) error {
+// !+encode
+func encode(buf *bytes.Buffer, v reflect.Value, whitespace int) error {
+	//if v.IsZero() {
+	//return nil
+	//}
 	switch v.Kind() {
 	case reflect.Invalid:
 		buf.WriteString("nil")
@@ -38,20 +43,41 @@ func encode(buf *bytes.Buffer, v reflect.Value) error {
 		reflect.Uint32, reflect.Uint64, reflect.Uintptr:
 		fmt.Fprintf(buf, "%d", v.Uint())
 
+	case reflect.Bool:
+		if v.Bool() {
+			fmt.Fprintf(buf, "t")
+		} else {
+			fmt.Fprintf(buf, "nil")
+		}
+	case reflect.Float64, reflect.Float32:
+		s := strconv.FormatFloat(v.Float(), 'g', -1, v.Type().Bits())
+		fmt.Fprintf(buf, "%s", s)
+	case reflect.Complex128, reflect.Complex64:
+		c := v.Complex()
+		real := strconv.FormatFloat(real(c), 'g', -1, 64)
+		imag := strconv.FormatFloat(imag(c), 'g', -1, 64)
+		fmt.Fprintf(buf, "#C(%s %s)", real, imag)
+
 	case reflect.String:
 		fmt.Fprintf(buf, "%q", v.String())
 
 	case reflect.Ptr:
-		return encode(buf, v.Elem())
+		return encode(buf, v.Elem(), whitespace)
 
 	case reflect.Array, reflect.Slice: // (value ...)
 		buf.WriteByte('(')
 		for i := 0; i < v.Len(); i++ {
+			//if v.Index(i).IsZero() {
+			//continue
+			//}
 			if i > 0 {
 				buf.WriteByte(' ')
 			}
-			if err := encode(buf, v.Index(i)); err != nil {
+			if err := encode(buf, v.Index(i), whitespace); err != nil {
 				return err
+			}
+			if i != v.Len()-1 {
+				fmt.Fprintf(buf, "\n%s", strings.Repeat(" ", whitespace+1))
 			}
 		}
 		buf.WriteByte(')')
@@ -59,32 +85,53 @@ func encode(buf *bytes.Buffer, v reflect.Value) error {
 	case reflect.Struct: // ((name value) ...)
 		buf.WriteByte('(')
 		for i := 0; i < v.NumField(); i++ {
+			if v.Field(i).IsZero() {
+				continue
+			}
 			if i > 0 {
 				buf.WriteByte(' ')
 			}
 			fmt.Fprintf(buf, "(%s ", v.Type().Field(i).Name)
-			if err := encode(buf, v.Field(i)); err != nil {
+			if err := encode(buf, v.Field(i), whitespace+len(v.Type().Field(i).Name)+2); err != nil {
 				return err
 			}
 			buf.WriteByte(')')
+			if i != v.NumField()-1 {
+				fmt.Fprintf(buf, "\n%s", strings.Repeat(" ", whitespace+1))
+			}
 		}
 		buf.WriteByte(')')
-
+	case reflect.Interface:
+		if v.Elem().IsNil() {
+			return nil
+		}
+		buf.WriteByte('(')
+		fmt.Fprintf(buf, "\"%s\" ", v.Elem().Type().String())
+		encode(buf, v.Elem(), whitespace+len(v.Elem().Type().String())+2)
+		buf.WriteByte(')')
 	case reflect.Map: // ((key value) ...)
 		buf.WriteByte('(')
+		count := 0
 		for i, key := range v.MapKeys() {
+			count++
+			//if v.MapIndex(key).IsZero() {
+			//continue
+			//}
 			if i > 0 {
 				buf.WriteByte(' ')
 			}
 			buf.WriteByte('(')
-			if err := encode(buf, key); err != nil {
+			if err := encode(buf, key, whitespace+1); err != nil {
 				return err
 			}
 			buf.WriteByte(' ')
-			if err := encode(buf, v.MapIndex(key)); err != nil {
+			if err := encode(buf, v.MapIndex(key), whitespace+1); err != nil {
 				return err
 			}
 			buf.WriteByte(')')
+			if count != len(v.MapKeys()) {
+				fmt.Fprintf(buf, "\n%s", strings.Repeat(" ", whitespace+1))
+			}
 		}
 		buf.WriteByte(')')
 

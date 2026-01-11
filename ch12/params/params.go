@@ -9,6 +9,7 @@ package params
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
@@ -59,9 +60,50 @@ func Unpack(req *http.Request, ptr interface{}) error {
 	return nil
 }
 
+func Pack(ptr interface{}) (string, error) {
+	var u strings.Builder
+	u.WriteString("?")
+	v := reflect.ValueOf(ptr).Elem()
+	for i := 0; i < v.NumField(); i++ {
+		fieldInfo := v.Type().Field(i) // a reflect.StructField
+		tag := fieldInfo.Tag           // a reflect.StructTag
+		name := tag.Get("http")
+		if name == "" {
+			name = strings.ToLower(fieldInfo.Name)
+		}
+		cur := v.Field(i)
+		switch cur.Kind() {
+		case reflect.Pointer:
+			if cur.IsNil() {
+				continue
+			}
+			fmt.Fprintf(&u, "%s=%v", name, cur.Elem())
+		case reflect.String:
+			fmt.Fprintf(&u, "%s=%s", name, url.QueryEscape(cur.String()))
+		case reflect.Array, reflect.Slice:
+			for i := 0; i < cur.Len(); i++ {
+				if cur.Index(i).Kind() == reflect.String {
+					fmt.Fprintf(&u, "%s=%s", name, url.QueryEscape(cur.Index(i).String()))
+				} else {
+					fmt.Fprintf(&u, "%s=%v", name, cur.Index(i))
+				}
+				if i < cur.Len()-1 {
+					u.WriteByte('&')
+				}
+			}
+		default:
+			fmt.Fprintf(&u, "%s=%v", name, cur)
+		}
+		if i != v.NumField()-1 {
+			u.WriteString("&")
+		}
+	}
+	return u.String(), nil
+}
+
 //!-Unpack
 
-//!+populate
+// !+populate
 func populate(v reflect.Value, value string) error {
 	switch v.Kind() {
 	case reflect.String:
